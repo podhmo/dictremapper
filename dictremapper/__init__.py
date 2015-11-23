@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 from collections import defaultdict, OrderedDict
-import json
 
 
 class Counter(object):
@@ -60,13 +59,25 @@ class Path(object):
             return self.default
 
 
+class ChangeOrder(object):
+    def __init__(self, path):
+        self._i = count()
+        self.path = path
+
+    def __call__(self, mapper, data):
+        return self.path(mapper, data)
+
+    def __getattr__(self, k):
+        return getattr(self.path, k)
+
+
 class Remapper(object):
     dict = OrderedDict
 
     def __new__(cls, *args, **kwargs):
         if "_paths" not in cls.__dict__:
             paths = defaultdict(list)
-            for c in reversed(cls.mro()):
+            for c in cls.mro():
                 for name, attr in c.__dict__.items():
                     if hasattr(attr, "_i"):  # path
                         paths[name].append(attr)
@@ -92,30 +103,3 @@ class Remapper(object):
             if path.tmpstate:
                 d.pop(name)
         return d
-
-if __name__ == "__main__":
-    class URL(Remapper):
-        url = Path("html.html_url")
-
-    class MyMapper(URL):
-        name = Path("full_name")
-        # todo: urlをここに
-        star = Path("stargazers_count", default=0, callback=int)
-
-    class MyMapper2(Remapper):
-        body = Path("main", callback=MyMapper())
-
-    d = {"html": {"html_url": "xxxx"}, "full_name": "yyyy"}
-    mapper = MyMapper()
-
-    print(json.dumps(mapper(d), indent=2))
-    print(json.dumps(MyMapper2()({"main": d}), indent=2))
-
-    class MyMapper3(Remapper):
-        fullname = Composed(
-            [Path("first_name"), Path("last_name")],
-            callback=lambda x, y: "{} {}".format(x, y)
-        )
-
-    d = {"first_name": "foo", "last_name": "bar"}
-    print(json.dumps(MyMapper3()(d), indent=2))

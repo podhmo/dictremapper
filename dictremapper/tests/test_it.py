@@ -17,7 +17,6 @@ class Tests(unittest.TestCase):
 
         class MyMapper(URL):
             name = self._getPath("full_name")
-            # todo: urlをここに
             star = self._getPath("stargazers_count", default=0, callback=int)
 
         d = {"html": {"html_url": "xxxx"}, "full_name": "yyyy"}
@@ -25,6 +24,25 @@ class Tests(unittest.TestCase):
 
         result = mapper(d)
         self.assertEqual(result, {"name": "yyyy", "url": "xxxx", "star": 0})
+        self.assertEqual(list(result.keys()), ["url", "name", "star"])
+
+    def test_inherited__change_order(self):
+        from dictremapper import ChangeOrder
+
+        class URL(self._getTargetClass()):
+            url = self._getPath("html.html_url")
+
+        class MyMapper(URL):
+            name = self._getPath("full_name")
+            url = ChangeOrder(URL.url)
+            star = self._getPath("stargazers_count", default=0, callback=int)
+
+        d = {"html": {"html_url": "xxxx"}, "full_name": "yyyy"}
+        mapper = MyMapper()
+
+        result = mapper(d)
+        self.assertEqual(result, {"name": "yyyy", "url": "xxxx", "star": 0})
+        self.assertEqual(list(result.keys()), ["name", "url", "star"])
 
     def test_nested(self):
         class MyMapper(self._getTargetClass()):
