@@ -40,7 +40,7 @@ setup(name='dictremapper',
       author="podhmo",
       author_email="",
       url="https://github.com/podhmo/dictremapper",
-      packages=find_packages(exclude=["dictremapper.tests"]),
+      packages=find_packages(exclude=["dictremapper.tests", "demo"]),
       license="mit",
       include_package_data=True,
       zip_safe=False,
@@ -53,4 +53,3 @@ setup(name='dictremapper',
       test_suite="dictremapper.tests",
       entry_points="""
 """)
-
