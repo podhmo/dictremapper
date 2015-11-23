@@ -150,7 +150,6 @@ class Remapper(object):
         return [self.as_dict(data, stack) for data in dataset]
 
     def get_current_excludes_dict(self, stack):
-        # TODO: nested excludes correctly
         if not stack:
             return self.excludes
         return self.excludes.merge(stack[-1].excludes)
