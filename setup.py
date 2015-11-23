@@ -29,14 +29,14 @@ testing_extras = tests_require + [
 ]
 
 setup(name='dictremapper',
-      version='0.0.1',
+      version='0.0.2',
       description='remapping dict',
       long_description=README + '\n\n' + CHANGES,
       classifiers=[
           "Programming Language :: Python",
           "Programming Language :: Python :: Implementation :: CPython",
       ],
-      keywords='',
+      keywords='dict, remapping, structure',
       author="podhmo",
       author_email="",
       url="https://github.com/podhmo/dictremapper",
