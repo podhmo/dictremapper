@@ -29,7 +29,7 @@ testing_extras = tests_require + [
 ]
 
 setup(name='dictremapper',
-      version='0.0.0',
+      version='0.0.1',
       description='remapping dict',
       long_description=README + '\n\n' + CHANGES,
       classifiers=[
