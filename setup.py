@@ -16,7 +16,6 @@ except IOError:
 
 
 install_requires = [
-    'setuptools',
 ]
 
 
@@ -38,10 +37,11 @@ setup(name='dictremapper',
           "Programming Language :: Python :: Implementation :: CPython",
       ],
       keywords='',
-      author="",
+      author="podhmo",
       author_email="",
-      url="",
-      packages=find_packages(),
+      url="https://github.com/podhmo/dictremapper",
+      packages=find_packages(exclude=["dictremapper.tests"]),
+      license="mit",
       include_package_data=True,
       zip_safe=False,
       install_requires=install_requires,
