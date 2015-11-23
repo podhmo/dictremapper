@@ -86,6 +86,7 @@ class ExcludeSet(object):
             self.data = EMPTY
         else:
             self.data = self.transform(excludes)
+        self.cache = {}
 
     def transform(self, excludes):
         d = {}
@@ -102,7 +103,10 @@ class ExcludeSet(object):
         return d
 
     def merge(self, d):
-        return merge_dict(copy.deepcopy(self.data), d)
+        cached_value = self.cache.get(id(d))
+        if cached_value is None:
+            cached_value = self.cache[id(d)] = merge_dict(copy.deepcopy(self.data), d)
+        return cached_value
 
     def __getitem__(self, k):
         return self.data[k]
