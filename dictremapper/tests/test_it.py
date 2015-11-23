@@ -105,6 +105,64 @@ class Tests(unittest.TestCase):
         result = MyMapper(excludes=["url"])(d)
         self.assertEqual(result, {"name": "yyyy"})
 
+    def test_nested__exclude(self):
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("full_name")
+            url = self._getPath("html_url")
+
+        class MyMapper2(self._getTargetClass()):
+            body = self._getPath("main", callback=MyMapper())
+
+        d = {"main": {"html_url": "xxxx", "full_name": "yyyy"}}
+        result = MyMapper2(excludes=["body.url"])(d)
+        self.assertEqual(result, {"body": {"name": "yyyy"}})
+
+    def test_nested__exclude2(self):
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("full_name")
+            url = self._getPath("html_url")
+
+        class MyMapper2(self._getTargetClass()):
+            body = self._getPath("main", callback=MyMapper(excludes=["url"]))
+
+        d = {"main": {"html_url": "xxxx", "full_name": "yyyy"}}
+        result = MyMapper2()(d)
+        self.assertEqual(result, {"body": {"name": "yyyy"}})
+
+    def test_nested__exclude3(self):
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("full_name")
+            description = self._getPath("description")
+            url = self._getPath("html_url")
+            star = self._getPath("html_url", callback=int, default=0)
+
+        class MyMapper2(self._getTargetClass()):
+            body = self._getPath("main", callback=MyMapper(excludes=["star"]))
+
+        class MyMapper3(self._getTargetClass()):
+            toplevel = self._getPath("toplevel", callback=MyMapper2(excludes=["body.url"]))
+
+        d = {"toplevel": {"main": {"html_url": "xxxx", "full_name": "yyyy", "star": "10", "description": "zzzzz"}}}
+        result = MyMapper3(excludes=["toplevel.body.description"])(d)
+        self.assertEqual(result, {"toplevel": {"body": {"name": "yyyy"}}})
+
+    def test_nested__exclude4(self):
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("full_name")
+            description = self._getPath("description")
+            url = self._getPath("html_url")
+            star = self._getPath("html_url", callback=int, default=0)
+
+        class MyMapper2(self._getTargetClass()):
+            packages = self._getPath("packages", callback=MyMapper(excludes=["star"], many=True))
+
+        class MyMapper3(self._getTargetClass()):
+            toplevel = self._getPath("toplevel", callback=MyMapper2(excludes=["packages.url"]))
+
+        d = {"toplevel": {"packages": [{"html_url": "xxxx", "full_name": "yyyy", "star": "10", "description": "zzzzz"}]}}
+        result = MyMapper3(excludes=["toplevel.packages.description"])(d)
+        self.assertEqual(result, {"toplevel": {"packages": [{"name": "yyyy"}]}})
+
     def test_composed(self):
         from dictremapper import Composed
 

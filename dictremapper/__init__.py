@@ -1,5 +1,9 @@
 # -*- coding:utf-8 -*-
-from collections import defaultdict, OrderedDict
+from collections import defaultdict, OrderedDict, namedtuple
+import copy
+
+
+Frame = namedtuple("Frame", "name remapper excludes")
 
 
 class Counter(object):
@@ -73,6 +77,50 @@ class ChangeOrder(object):
     def __getattr__(self, k):
         return getattr(self.path, k)
 
+EMPTY = {"": set()}
+
+
+class ExcludeSet(object):
+    def __init__(self, excludes):
+        if excludes is None:
+            self.data = EMPTY
+        else:
+            self.data = self.transform(excludes)
+
+    def transform(self, excludes):
+        d = {}
+        for keys in excludes:
+            ks = keys.split(".")
+            target = d
+            for k in ks[:-1]:
+                if k not in target:
+                    target[k] = {}
+                target = target[k]
+            if "" not in target:
+                target[""] = set()
+            target[""].add(ks[-1])
+        return d
+
+    def merge(self, d):
+        return merge_dict(copy.deepcopy(self.data), d)
+
+    def __getitem__(self, k):
+        return self.data[k]
+
+    def get(self, k, default=None):
+        return self.data.get(k, default)
+
+
+def merge_dict(d0, d1):  # side effect
+    for k, v in d1.items():
+        if k not in d0:
+            d0[k] = d1[k]
+        elif hasattr(v, "keys"):
+            merge_dict(d0[k], v)
+        else:
+            d0[k].update(d1[k])
+    return d0
+
 
 class Remapper(object):
     dict = OrderedDict
@@ -89,7 +137,7 @@ class Remapper(object):
 
     def __init__(self, many=False, excludes=None):
         self.many = many
-        self.excludes = excludes or []
+        self.excludes = ExcludeSet(excludes)
 
     def __call__(self, data, stack=None):
         stack = stack or []
@@ -99,32 +147,36 @@ class Remapper(object):
             return self.as_dict(data, stack)
 
     def as_list(self, dataset, stack):
-        r = []
-        for i, data in enumerate(dataset):
-            stack.append(i)
-            r.append(self.as_dict(data, stack))
-            stack.pop()
-        return r
+        return [self.as_dict(data, stack) for data in dataset]
+
+    def get_current_excludes_dict(self, stack):
+        # TODO: nested excludes correctly
+        if not stack:
+            return self.excludes
+        return self.excludes.merge(stack[-1].excludes)
 
     def as_dict(self, data, stack):
         d = self.dict()
         dummy = object()
         lazies = []
+        excludes_dict = self.get_current_excludes_dict(stack)
+        excludes = excludes_dict.get("", [])
+
         for name, path in self._paths.items():
-            if name in self.excludes:
+            if name in excludes:
                 continue
             elif path.aggregate:
                 lazies.append((name, path))
                 d[name] = dummy
             else:
-                stack.append(name)
+                stack.append(Frame(name=name, remapper=self, excludes=excludes_dict.get(name, EMPTY)))
                 d[name] = path(stack, self, data)
                 stack.pop()
         for name, path in lazies:
             d[name] = path(d)
 
         for name, path in self._paths.items():
-            if name in self.excludes:
+            if name in excludes:
                 continue
             elif path.tmpstate:
                 d.pop(name)
