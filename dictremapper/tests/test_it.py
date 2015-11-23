@@ -159,9 +159,12 @@ class Tests(unittest.TestCase):
         class MyMapper3(self._getTargetClass()):
             toplevel = self._getPath("toplevel", callback=MyMapper2(excludes=["packages.url"]))
 
-        d = {"toplevel": {"packages": [{"html_url": "xxxx", "full_name": "yyyy", "star": "10", "description": "zzzzz"}]}}
+        d = {"toplevel": {"packages": [
+            {"html_url": "xxxx", "full_name": "yyyy", "star": "10", "description": "zzzzz"},
+            {"html_url": "xxxx", "full_name": "yyyy", "star": "10", "description": "zzzzz"}
+        ]}}
         result = MyMapper3(excludes=["toplevel.packages.description"])(d)
-        self.assertEqual(result, {"toplevel": {"packages": [{"name": "yyyy"}]}})
+        self.assertEqual(result, {"toplevel": {"packages": [{"name": "yyyy"}, {"name": "yyyy"}]}})
 
     def test_composed(self):
         from dictremapper import Composed
