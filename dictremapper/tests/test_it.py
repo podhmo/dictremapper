@@ -57,6 +57,45 @@ class Tests(unittest.TestCase):
         result = MyMapper2()({"main": d})
         self.assertEqual(result, {"body": {"name": "yyyy", "url": "xxxx", "star": 0}})
 
+    def test_it__many_option(self):
+        from collections import OrderedDict
+
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("full_name")
+            url = self._getPath("html_url")
+
+        d = [
+            {"html_url": "xxxx1", "full_name": "yyyy1"},
+            {"html_url": "xxxx2", "full_name": "yyyy2"},
+        ]
+        result = MyMapper(many=True)(d)
+        self.assertEqual(result, [
+            OrderedDict([("name", "yyyy1"), ("url", "xxxx1")]),
+            OrderedDict([("name", "yyyy2"), ("url", "xxxx2")]),
+        ])
+
+    def test_nested__many_option(self):
+        from collections import OrderedDict
+
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("full_name")
+            url = self._getPath("html_url")
+
+        class MyMapper2(self._getTargetClass()):
+            packages = self._getPath("packages", callback=MyMapper(many=True))
+
+        d = {
+            "packages": [
+                {"html_url": "xxxx1", "full_name": "yyyy1"},
+                {"html_url": "xxxx2", "full_name": "yyyy2"},
+            ]
+        }
+        result = MyMapper2()(d)
+        self.assertEqual(result, OrderedDict([("packages", [
+            OrderedDict([("name", "yyyy1"), ("url", "xxxx1")]),
+            OrderedDict([("name", "yyyy2"), ("url", "xxxx2")]),
+        ])]))
+
     def test_composed(self):
         from dictremapper import Composed
 

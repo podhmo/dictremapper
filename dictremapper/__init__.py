@@ -55,7 +55,7 @@ class Path(object):
             return data
         except KeyError:
             if self.default is marker:
-                raise
+                raise KeyError("{k} is not in {v}".format(k=k, v=data))
             return self.default
 
 
@@ -82,9 +82,21 @@ class Remapper(object):
                     if hasattr(attr, "_i"):  # path
                         paths[name].append(attr)
             cls._paths = OrderedDict((k, v[0]) for k, v in sorted(paths.items(), key=lambda vs: vs[1][0]._i))
-        return super(Remapper, cls).__new__(cls, *args, **kwargs)
+        return super(Remapper, cls).__new__(cls)
+
+    def __init__(self, many=False):
+        self.many = many
 
     def __call__(self, data):
+        if self.many:
+            return self.as_list(data)
+        else:
+            return self.as_dict(data)
+
+    def as_list(self, dataset):
+        return [self.as_dict(data) for data in dataset]
+
+    def as_dict(self, data):
         d = self.dict()
         dummy = object()
         lazies = []
