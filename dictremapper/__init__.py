@@ -40,6 +40,18 @@ class Composed(object):
         return self.callback(*ys)
 
 
+class Aggregate(object):
+    aggregate = True
+
+    def __init__(self, callback, tmpstate=False):
+        self._i = count()
+        self.tmpstate = tmpstate
+        self.callback = callback
+
+    def __call__(self, data):
+        return self.callback(data)
+
+
 class Path(object):
     aggregate = False
 
