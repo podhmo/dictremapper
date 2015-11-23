@@ -81,6 +81,8 @@ EMPTY = {"": set()}
 
 
 class ExcludeSet(object):
+    CACHE_SIZE = 128
+
     def __init__(self, excludes):
         if excludes is None:
             self.data = EMPTY
@@ -106,6 +108,8 @@ class ExcludeSet(object):
         cached_value = self.cache.get(id(d))
         if cached_value is None:
             cached_value = self.cache[id(d)] = merge_dict(copy.deepcopy(self.data), d)
+            if len(self.cache) > self.CACHE_SIZE:
+                self.cache.clear()
         return cached_value
 
     def __getitem__(self, k):
