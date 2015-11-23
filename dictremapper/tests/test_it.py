@@ -96,6 +96,15 @@ class Tests(unittest.TestCase):
             OrderedDict([("name", "yyyy2"), ("url", "xxxx2")]),
         ])]))
 
+    def test_exclude(self):
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("full_name")
+            url = self._getPath("html_url")
+
+        d = {"html_url": "xxxx", "full_name": "yyyy"}
+        result = MyMapper(excludes=["url"])(d)
+        self.assertEqual(result, {"name": "yyyy"})
+
     def test_composed(self):
         from dictremapper import Composed
 

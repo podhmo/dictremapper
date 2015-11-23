@@ -31,8 +31,8 @@ class Composed(object):
         self.callback = callback
         self.tmpstate = tmpstate
 
-    def __call__(self, mapper, data):
-        ys = [x(mapper, data) for x in self.xs]
+    def __call__(self, stack, mapper, data):
+        ys = [x(stack, mapper, data) for x in self.xs]
         return self.callback(*ys)
 
 
@@ -46,12 +46,15 @@ class Path(object):
         self.callback = callback
         self.tmpstate = tmpstate
 
-    def __call__(self, mapper, data):
+    def __call__(self, stack, mapper, data):
         try:
             for k in self.keys:
                 data = data[k]
             if self.callback is not None:
-                data = self.callback(data)
+                if hasattr(self.callback, "many"):  # remapper
+                    data = self.callback(data, stack=stack)
+                else:
+                    data = self.callback(data)
             return data
         except KeyError:
             if self.default is marker:
@@ -64,8 +67,8 @@ class ChangeOrder(object):
         self._i = count()
         self.path = path
 
-    def __call__(self, mapper, data):
-        return self.path(mapper, data)
+    def __call__(self, stack, mapper, data):
+        return self.path(stack, mapper, data)
 
     def __getattr__(self, k):
         return getattr(self.path, k)
@@ -84,34 +87,45 @@ class Remapper(object):
             cls._paths = OrderedDict((k, v[0]) for k, v in sorted(paths.items(), key=lambda vs: vs[1][0]._i))
         return super(Remapper, cls).__new__(cls)
 
-    def __init__(self, many=False):
+    def __init__(self, many=False, excludes=None):
         self.many = many
+        self.excludes = excludes or []
 
-    def __call__(self, data):
+    def __call__(self, data, stack=None):
+        stack = stack or []
         if self.many:
-            return self.as_list(data)
+            return self.as_list(data, stack)
         else:
-            return self.as_dict(data)
+            return self.as_dict(data, stack)
 
-    def as_list(self, dataset):
-        return [self.as_dict(data) for data in dataset]
+    def as_list(self, dataset, stack):
+        r = []
+        for i, data in enumerate(dataset):
+            stack.append(i)
+            r.append(self.as_dict(data, stack))
+            stack.pop()
+        return r
 
-    def as_dict(self, data):
+    def as_dict(self, data, stack):
         d = self.dict()
         dummy = object()
         lazies = []
-
         for name, path in self._paths.items():
-            if path.aggregate:
+            if name in self.excludes:
+                continue
+            elif path.aggregate:
                 lazies.append((name, path))
                 d[name] = dummy
             else:
-                d[name] = path(self, data)
-
+                stack.append(name)
+                d[name] = path(stack, self, data)
+                stack.pop()
         for name, path in lazies:
             d[name] = path(d)
 
         for name, path in self._paths.items():
-            if path.tmpstate:
+            if name in self.excludes:
+                continue
+            elif path.tmpstate:
                 d.pop(name)
         return d
