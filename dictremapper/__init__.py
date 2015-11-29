@@ -70,6 +70,8 @@ class Path(object):
             rest_keys = keys[1:]
             if k.endswith("[]"):
                 return [self.access(stack, mapper, subdata, rest_keys) for subdata in data[k[:-2]]]
+            elif k.isdigit():
+                return self.access(stack, mapper, data[int(k)], rest_keys)
             else:
                 return self.access(stack, mapper, data[k], rest_keys)
 

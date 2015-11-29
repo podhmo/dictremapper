@@ -39,6 +39,16 @@ class Tests(unittest.TestCase):
         result = mapper(d)
         self.assertEqual(result["nameset"], [["a", "b", "c"], ["x", "y"]])
 
+    def test_index_access_with_digit(self):
+        class MyMapper(self._getTargetClass()):
+            year = self._getPath("published_at.0")
+
+        d = {"published_at": ["2000", "11", "12"]}
+        mapper = MyMapper()
+
+        result = mapper(d)
+        self.assertEqual(result, {"year": "2000"})
+
     def test_inherited(self):
         class URL(self._getTargetClass()):
             url = self._getPath("html.html_url")
