@@ -26,11 +26,12 @@ count = Counter(0)
 
 
 class LazyMapperCallable(object):
-    def __init__(self, path, many=False, excludes=None, wrapper=None):
+    def __init__(self, path, many=False, excludes=None, wrapper=None, loader=import_symbol):
         self.path = path
         self.wrapper = wrapper
-        self.excludes = excludes
+        self.excludes = ExcludeSet(excludes)
         self.many = many
+        self.loader = loader
 
     def __call__(self, data, stack):
         mapper = stack[-1].remapper
@@ -39,8 +40,7 @@ class LazyMapperCallable(object):
         elif self.wrapper is not None:
             fn = self.wrapper
         else:
-            fn = self.wrapper = import_module(self.path)(many=self.many, excludes=self.excludes)
-
+            fn = self.wrapper = self.loader(self.path)(many=self.many, excludes=self.excludes)
         excludes_dict = fn.get_current_excludes_dict(stack, excludes=self.excludes)
         if self.many:
             return fn.as_list(data, stack, excludes_dict)
@@ -115,16 +115,16 @@ class Path(object):
     def __call__(self, data, stack):
         try:
             result = self.access(data, stack, self.keys)
-            if self.callback is not None:
-                if hasattr(self.callback, "many"):  # remapper
-                    result = self.callback(result, stack=stack)
-                else:
-                    result = self.callback(result)
-            return result
         except KeyError:
             if self.default is marker:
                 raise KeyError("{k} is not in {v}".format(k=self.keys, v=data))
             return self.default
+        if self.callback is not None:
+            if hasattr(self.callback, "many"):  # remapper
+                result = self.callback(result, stack=stack)
+            else:
+                result = self.callback(result)
+        return result
 
 
 class ChangeOrder(object):
@@ -148,6 +148,8 @@ class ExcludeSet(object):
     def __init__(self, excludes):
         if excludes is None:
             self.data = EMPTY
+        elif hasattr(excludes, "transform"):
+            self.data = excludes
         else:
             self.data = self.transform(excludes)
         self.cache = {}

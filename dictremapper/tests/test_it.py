@@ -245,10 +245,49 @@ class Tests(unittest.TestCase):
         result = mapper(d)
         self.assertEqual(result, [{"name": "a"}, {"name": "b"}])
 
-    @unittest.skip("")
     def test_lazy(self):
+        from dictremapper import LazyMapperCallable
+
         # http://marshmallow.readthedocs.org/en/latest/nesting.html#two-way-nesting
-        pass
+        D = {}
+
+        def loader(k):
+            return D[k]
+
+        class AuthorMapper(self._getTargetClass()):
+            name = self._getPath("name")
+            books = self._getPath("books", callback=LazyMapperCallable("BookMapper", many=True, excludes=('author', ), loader=loader))
+
+        class BookMapper(self._getTargetClass()):
+            title = self._getPath("title")
+            author = self._getPath("author", callback=LazyMapperCallable("AuthorMapper", excludes=("books", ), loader=loader))
+
+        D["AuthorMapper"] = AuthorMapper
+        D["BookMapper"] = BookMapper
+
+        d = {
+            "id": 124,
+            "title": "As I Lay Dying",
+            "author": {
+                "id": 8,
+                "name": "William Faulkner"
+            }
+        }
+        result = BookMapper()(d)
+        self.assertEqual(result, {"title": "As I Lay Dying", "author": {"name": "William Faulkner"}})
+
+        d2 = {
+            "id": 8,
+            "name": "William Faulkner",
+            "books": [
+                {
+                    "id": 124,
+                    "title": "As I Lay Dying"
+                }
+            ]
+        }
+        result2 = AuthorMapper()(d2)
+        self.assertEqual(result2, {"name": "William Faulkner", "books": [{"title": "As I Lay Dying"}]})
 
     def test_nested_self(self):
         from dictremapper import Self
