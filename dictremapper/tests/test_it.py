@@ -244,3 +244,43 @@ class Tests(unittest.TestCase):
 
         result = mapper(d)
         self.assertEqual(result, [{"name": "a"}, {"name": "b"}])
+
+    @unittest.skip("")
+    def test_lazy(self):
+        # http://marshmallow.readthedocs.org/en/latest/nesting.html#two-way-nesting
+        pass
+
+    def test_nested_self(self):
+        from dictremapper import Self
+
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("name")
+            friends = self._getPath("friends", callback=Self(many=True))
+
+        mapper = MyMapper()
+
+        d = {
+            "name": "Steve",
+            "email": "steve@example.com",
+            "friends": [
+                {
+                    "name": "Mike",
+                    "email": "mike@example.com",
+                    "friends": [],
+                },
+                {
+                    "name": "Joe",
+                    "email": "joe@example.com",
+                    "friends": [],
+                }
+            ],
+        }
+        result = mapper(d)
+        expected = {
+            "name": "Steve",
+            "friends": [
+                {"name": "Mike", "friends": []},
+                {"name": "Joe", "friends": []}
+            ]
+        }
+        self.assertEqual(result, expected)

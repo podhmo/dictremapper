@@ -1,9 +1,17 @@
 # -*- coding:utf-8 -*-
 from collections import defaultdict, OrderedDict, namedtuple
+from importlib import import_module
+from functools import partial
 import copy
 
 
 Frame = namedtuple("Frame", "name remapper excludes")
+
+
+def import_symbol(x):
+    module, name = x.rsplit(".", 1)
+    m = import_module(module)
+    return getattr(m, name)
 
 
 class Counter(object):
@@ -17,10 +25,36 @@ class Counter(object):
 count = Counter(0)
 
 
+class LazyMapperCallable(object):
+    def __init__(self, path, many=False, excludes=None, wrapper=None):
+        self.path = path
+        self.wrapper = wrapper
+        self.excludes = excludes
+        self.many = many
+
+    def __call__(self, stack, mapper, data):
+        if self.path == "self" or self.path == mapper.__class__.__name__:
+            fn = mapper
+        elif self.wrapper is not None:
+            fn = self.wrapper
+        else:
+            fn = self.wrapper = import_module(self.path)(many=self.many, excludes=self.excludes)
+
+        excludes_dict = fn.get_current_excludes_dict(stack, excludes=self.excludes)
+        if self.many:
+            return fn.as_list(data, stack, excludes_dict)
+        else:
+            return fn.as_dict(data, stack, excludes_dict)
+
+
+Self = partial(LazyMapperCallable, "self")
+
+
 def maybe_list(xs, delimiter="."):
     if hasattr(xs, "split"):
         return xs.split(delimiter)
-    return xs
+    else:
+        return xs
 
 
 marker = object()
@@ -81,7 +115,9 @@ class Path(object):
         try:
             result = self.access(stack, mapper, data, self.keys)
             if self.callback is not None:
-                if hasattr(self.callback, "many"):  # remapper
+                if hasattr(self.callback, "wrapper"):  # lazy callable
+                    result = self.callback(stack, mapper, result)
+                elif hasattr(self.callback, "many"):  # remapper
                     result = self.callback(result, stack=stack)
                 else:
                     result = self.callback(result)
@@ -102,6 +138,7 @@ class ChangeOrder(object):
 
     def __getattr__(self, k):
         return getattr(self.path, k)
+
 
 EMPTY = {"": set()}
 
@@ -195,26 +232,27 @@ class Remapper(object):
         self.many = many
         self.excludes = ExcludeSet(excludes)
 
-    def __call__(self, data, stack=None):
+    def __call__(self, data, stack=None, excludes_dict=None):
         stack = stack or []
+        excludes_dict = excludes_dict or self.get_current_excludes_dict(stack)
         if self.many:
-            return self.as_list(data, stack)
+            return self.as_list(data, stack, excludes_dict)
         else:
-            return self.as_dict(data, stack)
+            return self.as_dict(data, stack, excludes_dict)
 
-    def as_list(self, dataset, stack):
-        return [self.as_dict(data, stack) for data in dataset]
+    def as_list(self, dataset, stack, excludes_dict):
+        return [self.as_dict(data, stack, excludes_dict) for data in dataset]
 
-    def get_current_excludes_dict(self, stack):
+    def get_current_excludes_dict(self, stack, excludes=None):
+        excludes = excludes or self.excludes
         if not stack:
-            return self.excludes
-        return self.excludes.merge(stack[-1].excludes)
+            return excludes
+        return excludes.merge(stack[-1].excludes)
 
-    def as_dict(self, data, stack):
+    def as_dict(self, data, stack, excludes_dict):
         d = self.dict()
         dummy = object()
         lazies = []
-        excludes_dict = self.get_current_excludes_dict(stack)
         excludes = excludes_dict.get("", [])
 
         for name, path in self._paths.items():
