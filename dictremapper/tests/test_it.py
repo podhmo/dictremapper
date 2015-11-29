@@ -225,3 +225,22 @@ class Tests(unittest.TestCase):
 
         result = MyMapper()({"first_name": "foo", "last_name": "bar"})
         self.assertEqual(result, {"fullname": "foo bar"})
+
+    def test_shortcut(self):
+        from dictremapper import Shortcut
+
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("Name")
+
+        mapper = Shortcut(MyMapper(), "Main.Body.Packages[]")
+
+        d = {
+            "Main": {
+                "Body": {
+                    "Packages": [{"Name": "a"}, {"Name": "b"}]
+                }
+            }
+        }
+
+        result = mapper(d)
+        self.assertEqual(result, [{"name": "a"}, {"name": "b"}])

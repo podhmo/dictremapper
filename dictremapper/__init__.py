@@ -156,6 +156,28 @@ def merge_dict(d0, d1):  # side effect
     return d0
 
 
+class Shortcut(object):
+    def __init__(self, remapper, keys):
+        self.remapper = remapper
+        self.keys = maybe_list(keys)
+
+    def __call__(self, data):
+        return self.access(data, self.keys)
+
+    def access(self, data, keys):
+        if not keys:
+            return self.remapper(data)
+        else:
+            k = keys[0]
+            rest_keys = keys[1:]
+            if k.endswith("[]"):
+                return [self.access(subdata, rest_keys) for subdata in data[k[:-2]]]
+            elif k.isdigit():
+                return self.access(data[int(k)], rest_keys)
+            else:
+                return self.access(data[k], rest_keys)
+
+
 class Remapper(object):
     dict = OrderedDict
 
