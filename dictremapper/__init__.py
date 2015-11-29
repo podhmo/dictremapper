@@ -29,11 +29,12 @@ marker = object()
 class Composed(object):
     aggregate = False
 
-    def __init__(self, xs, callback=sum, tmpstate=False):
+    def __init__(self, xs, callback=sum, tmpstate=False, name=None):
         self.xs = xs
         self._i = count()
         self.callback = callback
         self.tmpstate = tmpstate
+        self.name = name
 
     def __call__(self, stack, mapper, data):
         ys = [x(stack, mapper, data) for x in self.xs]
@@ -55,12 +56,13 @@ class Aggregate(object):
 class Path(object):
     aggregate = False
 
-    def __init__(self, keys, default=marker, callback=None, tmpstate=False):
+    def __init__(self, keys, default=marker, callback=None, tmpstate=False, name=None):
         self._i = count()
         self.default = default
         self.keys = maybe_list(keys)
         self.callback = callback
         self.tmpstate = tmpstate
+        self.name = name
 
     def access(self, stack, mapper, data, keys):
         if not keys:
@@ -196,7 +198,8 @@ class Remapper(object):
         for name, path in self._paths.items():
             if name in excludes:
                 continue
-            elif path.aggregate:
+            name = path.name or name
+            if path.aggregate:
                 lazies.append((name, path))
                 d[name] = dummy
             else:
@@ -209,6 +212,7 @@ class Remapper(object):
         for name, path in self._paths.items():
             if name in excludes:
                 continue
-            elif path.tmpstate:
+            name = path.name or name
+            if path.tmpstate:
                 d.pop(name)
         return d

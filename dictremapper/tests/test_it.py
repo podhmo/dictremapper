@@ -11,6 +11,16 @@ class Tests(unittest.TestCase):
         from dictremapper import Path
         return Path(*args, **kwargs)
 
+    def test_freedom_naming(self):
+        class MyMapper(self._getTargetClass()):
+            name = self._getPath("name", name="@name-{myname}")
+
+        d = {"name": "foo"}
+        mapper = MyMapper()
+
+        result = mapper(d)
+        self.assertEqual(result, {"@name-{myname}": "foo"})
+
     def test_squashed(self):
         class MyMapper(self._getTargetClass()):
             nameset = self._getPath("repositories[].packages[].name")
