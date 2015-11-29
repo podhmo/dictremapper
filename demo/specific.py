@@ -1,5 +1,6 @@
 import json
 from operator import itemgetter
+import itertools
 # https://gist.github.com/nvie/f304caf3b4f1ca4c3884
 
 d = {
@@ -39,11 +40,14 @@ class PointRemapper(Remapper):
         return [p for res in data["res"] for catlist in res["catlist"] for p in catlist["points"]]
 
 
-"""
 class PointRemapper2(Remapper):
-    points = SquashedPath("res[].catlist[].points[]", callback=lambda v: list(sorted(v, key=itemgetter("start"))))
-"""
+    def flatten_sort(v):
+        flatten1 = itertools.chain.from_iterable
+        return list(sorted(flatten1(flatten1(v)), key=itemgetter("start")))
+    points = Path("res[].catlist[].points[]", callback=flatten_sort)
 
 
 data = PointRemapper()(d)
+print(json.dumps(data, indent=2))
+data = PointRemapper2()(d)
 print(json.dumps(data, indent=2))

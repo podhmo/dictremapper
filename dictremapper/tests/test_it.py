@@ -11,6 +11,34 @@ class Tests(unittest.TestCase):
         from dictremapper import Path
         return Path(*args, **kwargs)
 
+    def test_squashed(self):
+        class MyMapper(self._getTargetClass()):
+            nameset = self._getPath("repositories[].packages[].name")
+
+        d = {
+            "repositories": [
+                {
+                    "name": "abc",
+                    "packages": [
+                        {"name": "a"},
+                        {"name": "b"},
+                        {"name": "c"},
+                    ]
+                },
+                {
+                    "name": "xyz",
+                    "packages": [
+                        {"name": "x"},
+                        {"name": "y"},
+                    ]
+                },
+            ]
+        }
+
+        mapper = MyMapper()
+        result = mapper(d)
+        self.assertEqual(result["nameset"], [["a", "b", "c"], ["x", "y"]])
+
     def test_inherited(self):
         class URL(self._getTargetClass()):
             url = self._getPath("html.html_url")

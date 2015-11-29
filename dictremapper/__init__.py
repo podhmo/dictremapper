@@ -62,19 +62,29 @@ class Path(object):
         self.callback = callback
         self.tmpstate = tmpstate
 
+    def access(self, stack, mapper, data, keys):
+        if not keys:
+            return data
+        else:
+            k = keys[0]
+            rest_keys = keys[1:]
+            if k.endswith("[]"):
+                return [self.access(stack, mapper, subdata, rest_keys) for subdata in data[k[:-2]]]
+            else:
+                return self.access(stack, mapper, data[k], rest_keys)
+
     def __call__(self, stack, mapper, data):
         try:
-            for k in self.keys:
-                data = data[k]
+            result = self.access(stack, mapper, data, self.keys)
             if self.callback is not None:
                 if hasattr(self.callback, "many"):  # remapper
-                    data = self.callback(data, stack=stack)
+                    result = self.callback(result, stack=stack)
                 else:
-                    data = self.callback(data)
-            return data
+                    result = self.callback(result)
+            return result
         except KeyError:
             if self.default is marker:
-                raise KeyError("{k} is not in {v}".format(k=k, v=data))
+                raise KeyError("{k} is not in {v}".format(k=self.keys, v=data))
             return self.default
 
 
