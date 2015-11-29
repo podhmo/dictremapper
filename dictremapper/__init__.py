@@ -32,7 +32,8 @@ class LazyMapperCallable(object):
         self.excludes = excludes
         self.many = many
 
-    def __call__(self, stack, mapper, data):
+    def __call__(self, data, stack):
+        mapper = stack[-1].remapper
         if self.path == "self" or self.path == mapper.__class__.__name__:
             fn = mapper
         elif self.wrapper is not None:
@@ -70,8 +71,8 @@ class Composed(object):
         self.tmpstate = tmpstate
         self.name = name
 
-    def __call__(self, stack, mapper, data):
-        ys = [x(stack, mapper, data) for x in self.xs]
+    def __call__(self, data, stack):
+        ys = [x(data, stack) for x in self.xs]
         return self.callback(*ys)
 
 
@@ -98,26 +99,24 @@ class Path(object):
         self.tmpstate = tmpstate
         self.name = name
 
-    def access(self, stack, mapper, data, keys):
+    def access(self, data, stack, keys):
         if not keys:
             return data
         else:
             k = keys[0]
             rest_keys = keys[1:]
             if k.endswith("[]"):
-                return [self.access(stack, mapper, subdata, rest_keys) for subdata in data[k[:-2]]]
+                return [self.access(subdata, stack, rest_keys) for subdata in data[k[:-2]]]
             elif k.isdigit():
-                return self.access(stack, mapper, data[int(k)], rest_keys)
+                return self.access(data[int(k)], stack, rest_keys)
             else:
-                return self.access(stack, mapper, data[k], rest_keys)
+                return self.access(data[k], stack, rest_keys)
 
-    def __call__(self, stack, mapper, data):
+    def __call__(self, data, stack):
         try:
-            result = self.access(stack, mapper, data, self.keys)
+            result = self.access(data, stack, self.keys)
             if self.callback is not None:
-                if hasattr(self.callback, "wrapper"):  # lazy callable
-                    result = self.callback(stack, mapper, result)
-                elif hasattr(self.callback, "many"):  # remapper
+                if hasattr(self.callback, "many"):  # remapper
                     result = self.callback(result, stack=stack)
                 else:
                     result = self.callback(result)
@@ -133,8 +132,8 @@ class ChangeOrder(object):
         self._i = count()
         self.path = path
 
-    def __call__(self, stack, mapper, data):
-        return self.path(stack, mapper, data)
+    def __call__(self, data, stack):
+        return self.path(data, stack)
 
     def __getattr__(self, k):
         return getattr(self.path, k)
@@ -264,7 +263,7 @@ class Remapper(object):
                 d[name] = dummy
             else:
                 stack.append(Frame(name=name, remapper=self, excludes=excludes_dict.get(name, EMPTY)))
-                d[name] = path(stack, self, data)
+                d[name] = path(data, stack)
                 stack.pop()
         for name, path in lazies:
             d[name] = path(d)
