@@ -91,7 +91,7 @@ class Aggregate(object):
 class Path(object):
     aggregate = False
 
-    def __init__(self, keys, default=marker, callback=None, tmpstate=False, name=None):
+    def __init__(self, keys, callback=None, default=marker, tmpstate=False, name=None):
         self._i = count()
         self.default = default
         self.keys = maybe_list(keys)
